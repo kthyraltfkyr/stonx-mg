@@ -27,7 +27,7 @@ DOT="•"
 
 # ───────── التحقق من الملفات ─────────
 if [ ! -f "$INPUT_FILE" ]; then
-  echo -e "${RED}${BOLD}${FAIL} ملف المسارات غير موجود: $INPUT_FILE${NC}"
+  echo -e "${RED}${BOLD}${FAIL} Paths file : $INPUT_FILE${NC}"
   exit 1
 fi
 
@@ -59,6 +59,7 @@ is_uploaded() {
   grep -Fxq "$file" "$PROGRESS_FILE" 2>/dev/null && return 0
   rclone ls "$REMOTE" 2>/dev/null | grep -q "$base" && return 0
 
+
   return 1
 }
 
@@ -67,12 +68,12 @@ upload() {
   local file="$1"
 
   if [ ! -f "$file" ]; then
-    echo -e "${YELLOW}${SKIP} غير موجود: $file${NC}"
+    echo -e "${YELLOW}${SKIP} unavailable : $file${NC}"
     return
   fi
 
   if is_uploaded "$file"; then
-    echo -e "${CYAN}${SKIP} مرفوع مسبقاً: $(basename "$file")${NC}"
+    echo -e "${CYAN}${SKIP} Not possible : $(basename "$file")${NC}"
     return
   fi
 
@@ -82,7 +83,7 @@ upload() {
   # اسم فريد مضمون 100%
   name="stonx_${num}_$(date +%s%N | tail -c 6).${ext}"
 
-  echo -e "${CYAN}${ARROW} رفع: $name${NC}"
+  echo -e "${CYAN}${ARROW} Running : $name${NC}"
 
   if rclone copyto "$file" "$REMOTE/$name" --ignore-existing --quiet; then
     (
@@ -90,14 +91,14 @@ upload() {
       echo "$file" >> "$PROGRESS_FILE"
     ) 200>"$LOCK_FILE"
 
-    echo -e "${GREEN}${OK} تم: $name${NC}"
+    echo -e "${GREEN}${OK} Powered on : $name${NC}"
   else
     (
       flock 200
       echo "$file" >> "$FAILED_FILE"
     ) 200>"$LOCK_FILE"
 
-    echo -e "${RED}${FAIL} فشل: $name${NC}"
+    echo -e "${RED}${FAIL} Operation failure : $name${NC}"
   fi
 }
 
@@ -105,7 +106,7 @@ upload() {
 mapfile -t files < <(grep -v '^$' "$INPUT_FILE")
 
 total=${#files[@]}
-echo -e "${CYAN}${BOLD}بدء رفع ${total} ملف${NC}"
+echo -e "${CYAN}${BOLD}Work began  ${total} file${NC}"
 
 i=0
 
@@ -113,7 +114,7 @@ while [ $i -lt $total ]; do
   end=$((i + MAX_JOBS))
   [ $end -gt $total ] && end=$total
 
-  echo -e "\n${DOT} دفعة: $((i+1)) → $end"
+  echo -e "\n${DOT} employment : $((i+1)) → $end"
 
   for ((j=i; j<end; j++)); do
     upload "${files[$j]}" &
@@ -125,7 +126,7 @@ done
 
 # ───────── إعادة المحاولة ─────────
 if [ -s "$FAILED_FILE" ]; then
-  echo -e "\n${YELLOW}إعادة المحاولة...${NC}"
+  echo -e "\n${YELLOW}Try again ...${NC}"
 
   tmp=$(mktemp)
   cp "$FAILED_FILE" "$tmp"
@@ -143,11 +144,11 @@ fi
 success=$(wc -l < "$PROGRESS_FILE")
 failed=$(wc -l < "$FAILED_FILE")
 
-echo -e "\n${BOLD}──── النتائج ────${NC}"
-echo -e "${GREEN}${OK} نجاح: $success${NC}"
-echo -e "${RED}${FAIL} فشل: $failed${NC}"
-echo -e "${CYAN}${DOT} إجمالي: $total${NC}"
+echo -e "\n${BOLD}──── Statistics ────${NC}"
+echo -e "${GREEN}${OK} success : $success${NC}"
+echo -e "${RED}${FAIL} to fail : $failed${NC}"
+echo -e "${CYAN}${DOT} total : $total${NC}"
 
 # ───────── آخر ملفات ─────────
-echo -e "\nآخر 5 ملفات:"
+echo -e "\nLast five files :"
 rclone ls "$REMOTE" 2>/dev/null | tail -5
